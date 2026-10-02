@@ -138,10 +138,12 @@ def launch(target: Path, args: argparse.Namespace) -> int:
 
     claude = shutil.which("claude")
     if args.no_launch or not concept or not claude:
-        if concept and not claude:
-            print("\nclaude コマンドが見つからないため、起動しません。")
-        print("\n立ち上げの始め方:")
-        print(f'  cd "{target}" && claude "{prompt if concept else BOOTSTRAP + " <1 文のコンセプト>"}"')
+        # コンセプトがなければ、new_project.py が表示した「次の手順」で足りる（同じ案内を二度出さない）
+        if concept:
+            if not claude:
+                print("\nclaude コマンドが見つからないため、起動しません。")
+            print("\n立ち上げの始め方（コンセプトとモードを入れたもの）:")
+            print(f'  cd "{target}" && claude "{prompt}"')
         return 0
     print(f"\nClaude Code を起動します: {prompt}")
     return subprocess.run([claude, prompt], cwd=str(target)).returncode

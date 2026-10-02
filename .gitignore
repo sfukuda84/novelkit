@@ -9,3 +9,6 @@ CLAUDE.local.md
 
 # novelkit の生成物（文脈パック）
 chapters/*/context/
+
+# novelkit の update が、手で直したファイルの新しい版を置く場所
+.scaffold-new/
