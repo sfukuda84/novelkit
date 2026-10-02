@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "new-novelkit-project"
+version = "0.1.0"
+description = "novelkit（AI と一緒に小説を書くスキルセット）の作品を作り、Claude Code で立ち上げ（novelkit-bootstrap）を始めるコマンド"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = []
+
+[project.scripts]
+new-novelkit-project = "new_novelkit_project.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/new_novelkit_project"]

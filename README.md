@@ -61,27 +61,43 @@ Web 検索には 1 セッションあたりの回数の上限がある（Claude 
 - **数えられない環境**（Claude Code 以外）では、1 セッション 1 章で止まる。
 - 上限と見積もりは `.novelkit/config.yaml` の `session` で変える。既存の作品には `python3 skills/novelkit/novelkit-status/scripts/novelkit.py hooks install` でフックを入れる。
 
+## コマンドの導入と更新
+
+[speckit](https://github.com/sfukuda84/my-speckit-scaffold) の `new-speckit-project` と同じく、uv のツールとして入れる。
+
+```bash
+uv tool install "git+https://github.com/sfukuda84/novelkit#subdirectory=tool"   # 導入（初回だけ）
+uv tool upgrade new-novelkit-project                                                     # コマンドの更新
+new-novelkit-project update [作品のディレクトリ]                                   # 作成済みの作品に scaffold の新しい版を取り込む
+```
+
+- `new-novelkit-project` は、実行のたびに scaffold を GitHub から取得して作品を作る（`--ref` でブランチやタグ、`--repo` でリポジトリを指定できる）。
+- `update` は、scaffold の持ち物（スキル、ルールなど）だけを取り込み、1 つのコミットにする。scaffold のどの版とも中身が一致しないファイルは手で直したものとみなして上書きせず、新しい版を `.scaffold-new/` に置く。取り込みで残した同名のスキルにも触らない。`--dry-run` で、何が変わるかだけを見られる。
+- スキルを scaffold へのリンクで置いた作品（`--link`）は、スキルがすでに最新なので、`update` はリンクの外（ルールなど）だけを更新する。
+- 手元の scaffold（このリポジトリの clone）から使うときは、`scripts/new-novelkit-project` を直接実行するか、`--scaffold <ディレクトリ>` を付ける。`--link` は手元の scaffold を使うときだけ使える。
+- 以前に `~/.local/bin/new-novelkit-project` を `scripts/new-novelkit-project` へのシンボリックリンクで入れていたなら、リンクを消してから uv で入れる（`rm ~/.local/bin/new-novelkit-project`）。
+- オプションの一覧は [tool/README.md](tool/README.md) にある。
+
 ## 使い方
 
 ### 新しい作品
 
 ```bash
-python3 ~/.myai/scaffold/novelkit/scripts/new_project.py ~/novels/my-novel --title "仮題"
-cd ~/novels/my-novel
-claude "/novelkit-bootstrap 滅びた王国の料理人が、敵国の王の舌を満たして祖国を取り戻す話"
+new-novelkit-project ~/novels/my-novel --title "仮題" -m "滅びた王国の料理人が、敵国の王の舌を満たして祖国を取り戻す話"
 ```
 
-- スキルは作品のディレクトリの `skills/novelkit/` にコピーされる。`--link` を付けると、scaffold へのシンボリックリンクになる（scaffold の更新がすぐ反映される）。
+- 作品のディレクトリを作り、Claude Code で `/novelkit-bootstrap <コンセプト>` を始める。`-m` を省くと対話でコンセプトを聞く。`--auto`・`--oneshot` を付けると、そのモードで始める。
+- スキルは作品のディレクトリの `skills/novelkit/` にコピーされる。手元の scaffold を使い `--link` を付けると、scaffold へのシンボリックリンクになる（scaffold の更新がすぐ反映される）。コピーの作品は `new-novelkit-project update` で新しい版にする。
 - 立ち上げが終わったら `/novelkit-all` で最初の章から進める。`/novelkit-all all --auto` で全章を無人で進めることもできる。
 
 ### 既存の作品に取り込む
 
 ```bash
-python3 ~/.myai/scaffold/novelkit/scripts/new_project.py ~/novels/existing --adopt --link
+new-novelkit-project ~/novels/existing --adopt
 ```
 
 - 既存のファイルは上書きしない。`.gitignore` は、足りない行だけを末尾に足す。追加したファイルを確かめてからコミットする。
-- `.claude/skills/` などに同名のスキル（別の版をコピーで入れていたものなど）があれば残し、`CONFLICT` として表示する。novelkit 版に揃えるなら、既存のものを消してから `python3 ~/.myai/scaffold/novelkit/scripts/new_project.py --relink <作品のディレクトリ>` で張り直す。
+- `.claude/skills/` などに同名のスキル（別の版をコピーで入れていたものなど）があれば残し、`CONFLICT` として表示する。novelkit 版に揃えるなら、既存のものを消してから、手元の scaffold の `python3 scripts/new_project.py --relink <作品のディレクトリ>` で張り直す。
 - 既存の `CLAUDE.md` などは上書きしないので、表示された行（`@.kiro/steering/novel-writing.md` など）を足す。
 - `.novelkit/config.yaml` の `paths` を既存の配置に合わせる。ファイルは動かさない。合わせた後に `python3 skills/novelkit/novelkit-status/scripts/novelkit.py init` を実行すると、足りないディレクトリだけを作る。
 - `/novelkit-bootstrap --adopt` で、既存の資料から足りない成果物だけを作る（`--auto`・`--oneshot` と組み合わせられる）。
@@ -117,9 +133,10 @@ python3 skills/novelkit/novelkit-status/scripts/novelkit.py handover   # 引き�
 │   ├── novelkit-status/scripts/        #   novelkit.py（進捗・文脈パック・引き継ぎ書・検索の予算）、nklib.py（共通ライブラリ）、count_search.py（フック）
 │   ├── novelkit-review/scripts/        #   phrases.py（類似性軸の検索候補）
 │   └── novelkit-check/scripts/         #   check.py（機械検証）
-└── scripts/
-    ├── new_project.py                  # 作品のディレクトリを作る・既存作品に取り込む（--adopt）・リンクを張り直す（--relink）
-    └── new-novelkit-project            # 作って Claude Code で立ち上げを始める
+├── scripts/
+│   ├── new_project.py                  # 作品のディレクトリを作る・既存作品に取り込む（--adopt）・リンクを張り直す（--relink）
+│   └── new-novelkit-project            # 手元の scaffold から使うときの入口（本体は tool/）
+└── tool/                               # uv で入れるコマンド new-novelkit-project（作成・取り込み・update）とテスト
 ```
 
 ## 作品のディレクトリ構成
