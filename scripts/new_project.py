@@ -116,6 +116,15 @@ def print_conflicts(conflicts: list[str]) -> None:
         print(f"  ほか {len(conflicts) - 6} 件")
 
 
+def relink_command(target: Path) -> str:
+    """リンクを張り直すコマンド。uv で入れた new-novelkit-project から呼ばれたときは、scaffold が一時的な場所にあって
+    終わると消えるので、このファイルのパスではなく、取り込みをもう一度実行するコマンドを示す（足りないリンクだけを作る）。"""
+    launcher = os.environ.get("NOVELKIT_LAUNCHER")
+    if launcher:
+        return f'{launcher} "{target}" --adopt'
+    return f"python3 {Path(__file__).resolve()} --relink {target}"
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="novelkit の作品ディレクトリを作る")
     ap.add_argument("target")
@@ -196,7 +205,7 @@ def main() -> None:
             print(f"  {step}. {hint}"); step += 1
         if conflicts:
             print(f"  {step}. CONFLICT のスキルは既存のものを残した。novelkit 版に揃えるなら、既存のものを消してから "
-                  f"`python3 {Path(__file__).resolve()} --relink {target}` を実行する"); step += 1
+                  f"`{relink_command(target)}` を実行する（足りないリンクだけを作る）"); step += 1
         print(f"  {step}. .novelkit/config.yaml の paths を既存の配置に合わせる（ファイルは動かさない）"); step += 1
         print(f"  {step}. python3 skills/novelkit/novelkit-status/scripts/novelkit.py init で、足りないディレクトリだけを作る"); step += 1
         print(f"  {step}. /novelkit-bootstrap --adopt で、既存のプロット・設定・本文から足りない成果物だけを作る"

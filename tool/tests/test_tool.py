@@ -148,6 +148,24 @@ class ToolTest(unittest.TestCase):
         self.assertEqual((target / "CLAUDE.md").read_text(encoding="utf-8"), "# mine\n")
         self.assertIn("同名の既存のもの", out)
 
+    def test_adopt_relink_hint_points_to_command(self) -> None:
+        target = self.work("p")
+        own = target / ".claude" / "skills" / "novelkit-bootstrap"
+        own.mkdir(parents=True)
+        (own / "SKILL.md").write_text("mine\n", encoding="utf-8")
+        git("init", "-q", "-b", "main", cwd=target)
+        git("add", "-A", cwd=target)
+        git("commit", "-qm", "init", cwd=target)
+        code, out = call(str(target), "--adopt", "--repo", self.url)
+        self.assertEqual(code, 0, out)
+        self.assertIn(f'{cli.PROG} "{target}" --adopt', out)
+        self.assertNotIn("novelkit-scaffold-", out)  # 消える一時的な scaffold のパスを案内しない
+        # 案内どおり、既存のものを消して取り込みをもう一度実行すると、足りないリンクだけを作る
+        shutil.rmtree(own)
+        code, out = call(str(target), "--adopt", "--repo", self.url)
+        self.assertEqual(code, 0, out)
+        self.assertTrue(own.is_symlink())
+
     def test_update_stops_on_dirty_tree(self) -> None:
         target = self.work("p")
         self.assertEqual(call(str(target), "--repo", self.url, "--no-launch")[0], 0)

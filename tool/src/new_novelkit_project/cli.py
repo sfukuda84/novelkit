@@ -181,7 +181,9 @@ def run(args: argparse.Namespace, scaffold_dir: Path | None) -> int:
             scaffold = tmp / "scaffold"
             sha = clone_scaffold(repo, ref, scaffold)
             info(f"==> scaffold の版: {sha[:7]}")
-            code = subprocess.run(new_project_command(check_scaffold(scaffold), target, args)).returncode
+            # 一時的な scaffold のパスを案内に出さないよう、uv のコマンドから呼んだことを new_project.py に伝える
+            env = {**os.environ, "NOVELKIT_LAUNCHER": PROG}
+            code = subprocess.run(new_project_command(check_scaffold(scaffold), target, args), env=env).returncode
         finally:
             remove_tree(tmp)
     if code != 0:
