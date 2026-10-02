@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+"""new-novelkit-project: novelkit の作品ディレクトリを作り、Claude Code で立ち上げ（novelkit-bootstrap）を始める。
+
+使い方:
+  new-novelkit-project <作品のディレクトリ> [--title <仮題>] [-m <1 文のコンセプト>] [--auto | --oneshot]
+                       [--link] [--adopt] [--no-launch]
+
+- 作品のディレクトリは、同じ scripts/ にある new_project.py で作る（規則ファイル、スキル、git init、フック）。
+- -m を付けると、作ったディレクトリで claude を対話モードで起動し、"/novelkit-bootstrap [--auto|--oneshot] <コンセプト>" を渡す。
+- -m を省くと、対話でコンセプトを聞く。空のまま Enter を押すか --no-launch を付けると、起動せずに次の手順だけを表示する。
+- --adopt（既存の作品への取り込み）のときは起動しない。取り込みの手順は new_project.py が表示する。
+
+~/.local/bin などから、このファイルへのシンボリックリンクで呼ぶ（実体の場所から new_project.py を探す）。
+標準ライブラリだけで書く（Python 3.9 以上）。
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+NEW_PROJECT = Path(os.path.realpath(__file__)).parent / "new_project.py"
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(
+        prog="new-novelkit-project",
+        description="novelkit の作品ディレクトリを作り、Claude Code で立ち上げ（novelkit-bootstrap）を始める。")
+    ap.add_argument("target", help="作る作品のディレクトリ（存在しないか、空であること。--adopt なら既存の作品）")
+    ap.add_argument("--title", default="", help="作品の仮題（.novelkit/config.yaml の title）")
+    ap.add_argument("-m", "--message", default=None, help="1 文のコンセプト。省略時は対話で入力を受ける")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--auto", action="store_true", help="質問せず推奨案を採用して進める（novelkit-bootstrap --auto）")
+    mode.add_argument("--oneshot", action="store_true", help="最初に一度だけまとめて質問し、以降は自動で進める")
+    ap.add_argument("--link", action="store_true", help="スキルをコピーせず、scaffold へのシンボリックリンクにする")
+    ap.add_argument("--adopt", action="store_true", help="既存の作品に取り込む（上書きしない。エージェントは起動しない）")
+    ap.add_argument("--no-launch", action="store_true", help="エージェントを起動せず、次の手順だけを表示する")
+    args = ap.parse_args()
+
+    target = Path(args.target).expanduser().resolve()
+    cmd = [sys.executable, str(NEW_PROJECT), str(target)]
+    if args.title:
+        cmd += ["--title", args.title]
+    if args.link:
+        cmd.append("--link")
+    if args.adopt:
+        cmd.append("--adopt")
+    if subprocess.run(cmd).returncode != 0:
+        return 1
+    if args.adopt:
+        return 0
+
+    concept = args.message
+    if concept is None and not args.no_launch and sys.stdin.isatty():
+        try:
+            concept = input("\n1 文のコンセプト（空のまま Enter で、起動せずに終える）: ").strip()
+        except EOFError:
+            concept = ""
+    mode_flag = "--auto" if args.auto else "--oneshot" if args.oneshot else ""
+    prompt = " ".join(p for p in ["/novelkit-bootstrap", mode_flag, (concept or "").strip()] if p)
+
+    claude = shutil.which("claude")
+    if args.no_launch or not concept or not claude:
+        if concept and not claude:
+            print("\nclaude コマンドが見つからないため、起動しません。")
+        print("\n立ち上げの始め方:")
+        print(f'  cd "{target}" && claude "{prompt if concept else "/novelkit-bootstrap <1 文のコンセプト>"}"')
+        return 0
+
+    print(f'\nClaude Code を起動します: {prompt}')
+    return subprocess.run([claude, prompt], cwd=target).returncode
+
+
+if __name__ == "__main__":
+    sys.exit(main())

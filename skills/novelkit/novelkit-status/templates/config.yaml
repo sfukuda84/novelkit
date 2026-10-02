@@ -1,0 +1,54 @@
+# novelkit の作品設定（novelkit.py init が作る）
+# パスは作品のルートからの相対パス。既存作品に合わせて書き換えてよい（ファイルを動かさずに novelkit を使うため）。
+title:
+
+paths:
+  concept: docs/concept          # seed.md, direction.md, premises.md, backlog.md
+  research: docs/research        # wide.md, deep/, anachronism.md
+  plot: docs/plot                # synopsis.md, structure.md, promises.md, threads.md
+  canon: canon                   # 正典（character/, place/, org/, item/, rules.md, glossary.md, timeline.md, relations.md）
+  chapters: chapters             # <NN>-<slug>/ spec.md, scenes.md, state.md, summaries.md, reviews/
+  draft: draft                   # <NN>/<話番号>-<題>.md
+  publish: publish
+  handover: handover
+  constitution: .novelkit/memory/constitution.md
+
+# 1 話の字数（文体の決まりの 1 話の字数と揃える）。check.py は、台帳の「目安」（±tolerance）と、この範囲の両方で判定する。
+# 範囲から外れても soft_margin（0.1 = 10%）の幅に収まれば、満たしたとみなして INFO にする（字数を追って言葉を足さないため）
+episode:
+  target_min: 3000
+  target_max: 6000
+  tolerance: 0.2
+  soft_margin: 0.1
+
+# 文章の機械検査（check.py の prose）
+prose:
+  long_sentence: 120        # 地の文の 1 文がこの字数を超えたら警告
+  same_ending_run: 6        # 地の文の文末（末尾 2 字）がこの数だけ続いたら警告
+  kosoado_per_1000: 20      # 地の文 1,000 字あたりの指示語（こそあど）の上限
+  scene_break_max: 12       # 場面区切りだけの行（＊ など）の 1 話あたりの上限
+  max_findings_per_file: 20
+  banned: []                # 禁止表現（例: [とりあえず, 〜的な]）
+
+# セッションの区切り（novelkit.py budget）。Web 検索には 1 セッションの上限がある（Claude Code で観測した値。公式の記載はない）
+# 検索の多い工程（W2・W5・C7）と、章に入る前に、残りが見積もりに足りるかを確かめ、足りなければ工程の区切りで止まる
+session:
+  web_search_limit: 200
+  reserve: 10               # 見積もりの外に残しておく余裕
+  estimates:                # 工程ごとの Web 検索の見積もり（件）
+    W2: 80
+    W5: 100
+    C7: 40
+    chapter: 50             # 1 章（C2〜C11）の合計
+  stop_after_work: true     # 作品の工程（W10）の後は、必ずセッションを区切る
+  chapters_unmetered: 1     # 回数を数えられない環境で、1 セッションに進める章の数
+
+# 執筆時の文脈パック（novelkit.py context）
+context:
+  full_text_prev: 2         # 同じ章の直前の何話を本文のまま渡すか。それより前は要約で渡す
+  summary_limit: 0          # 渡す要約の上限（0 は無制限）
+  always_files:             # 常に文脈パックに入れるファイル（フロントマターのない正典、時代錯誤の一覧など）
+    - canon/README.md
+    - canon/rules.md
+    - canon/glossary.md
+    - docs/research/anachronism.md

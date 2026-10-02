@@ -1,0 +1,11 @@
+.DS_Store
+Thumbs.db
+*~
+__pycache__/
+*.py[cod]
+.venv/
+.claude/settings.local.json
+CLAUDE.local.md
+
+# novelkit の生成物（文脈パック）
+chapters/*/context/
