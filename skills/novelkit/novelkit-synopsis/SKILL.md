@@ -22,6 +22,8 @@ disable-model-invocation: false
 
 `premises.md` に未決の必須項目があれば、`novelkit-sparring` を案内する。作者が後で決めると明示した項目は、`[NEEDS CLARIFICATION]` のまま進めてよい。
 
+既存の作品に取り込むとき（`novelkit-bootstrap --adopt`）は、既存のあらすじ・構成のメモ・書き進めた本文を入力にし、すでに決まっている結末や展開を変えない。足りない項目だけを質問（自動モードでは推奨案）で埋め、元の資料を出典として書く。
+
 ## 2. 手順
 
 ### ステップ 1: 1 文と 5 文

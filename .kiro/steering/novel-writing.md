@@ -55,6 +55,15 @@ inclusion: always
 | 本文 | AI が下書きし、作者が推敲して確定する | AI が本文まで書いて確定する |
 | 質問 | 推奨案を添えて質問し、合意を得てから進める | 質問せず推奨案を採用し、`auto-decisions.md` に記録する |
 
+## 既存の作品への取り込み
+
+書きかけの作品には、`new_project.py --adopt` で規則とスキルを足し（既存のファイルは上書きしない）、`.novelkit/config.yaml` の `paths` を既存の配置に合わせてから、`novelkit-bootstrap --adopt` を実行する。
+
+- 既存の資料（プロット、設定資料、本文、メモ）を探し、W1〜W10 ごとに「移し替える / 完了として記録 / 新しく作る / 飛ばす」を `docs/adopt-plan.md` に書いて合意してから進める（`novelkit-bootstrap` §9）。
+- 元のファイルは動かさない・消さない。既存の本文は作者が確定させたものとして扱い、書き換えない（原則 6）。本文にフロントマターを足すのも、作者の承認を得てからにする。
+- 書き終えた章は、章仕様（`spec.md`）とシーン台帳（`scenes.md`）を本文から逆起こしし、台帳の `出力:` で既存の本文を指す。
+- 既存の決まり（視点、話番号、表記、用語）は、novelkit の推奨と違っても既存を採り、変えた方がよい点は見直しの候補として記録するだけにする。
+
 ## セッションの区切り
 
 Web 検索には 1 セッションあたりの回数の上限がある。作品の工程（W10）の後は必ずセッションを区切り、W2・W5・C7 の前と章に入る前には `novelkit.py budget` で残りを確かめ、STOP なら工程の区切りで止まる（`novelkit-status` §3「セッションの区切り」）。止まるのは失敗ではない。新しいセッションで同じスキルを実行すれば、続きから再開する。
@@ -76,6 +85,7 @@ Web 検索には 1 セッションあたりの回数の上限がある。作品�
 └── memory/constitution.md   # 文体の決まり（最上位の規範）
 docs/
 ├── auto-decisions.md        # 自動モードで決めたこと（作品の工程）。章の工程の分は chapters/<章>/auto-decisions.md
+├── adopt-plan.md            # 既存の作品への取り込みの計画（novelkit-bootstrap --adopt）
 ├── concept/                 # seed.md、direction.md、premises.md、backlog.md（ネタ帳）
 ├── research/                # wide.md、deep/、anachronism.md
 └── plot/                    # synopsis.md、structure.md、promises.md、threads.md

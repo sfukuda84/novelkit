@@ -24,6 +24,8 @@ disable-model-invocation: false
 
 `spec.md` がなければ `novelkit-plot` を案内する。
 
+**取り込み（`novelkit-bootstrap --adopt`）**: 既存の本文がある話は、本文から読み取って `- [x]` のタスクとして台帳に書き、`出力:` に既存の本文のパスを書く（ファイルは動かさず、本文も書き換えない）。ステップ 1〜3 の「組む」作業は、まだ書いていない話にだけ行う。詳しくは `novelkit-bootstrap` §9.3。
+
 ## 2. シーン台帳の形式
 
 様式は [templates/scenes.md](./templates/scenes.md)。**1 行目の形は `check.py` と `novelkit.py` が読むので厳守する。**

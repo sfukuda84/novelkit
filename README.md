@@ -20,7 +20,7 @@ AI と一緒に小説を書くためのスキルセット。[my-speckit-scaffold
 
 | 区分 | スキル | 工程 | speckit の元 |
 |---|---|---|---|
-| 統括 | `novelkit-bootstrap` | W0〜W10 | speckit-bootstrap |
+| 統括 | `novelkit-bootstrap` | W0〜W10（`--auto`、`--oneshot`、`--adopt`） | speckit-bootstrap |
 | 統括 | `novelkit-chapter` | C2〜C3-3 | speckit-feature |
 | 統括 | `novelkit-write` | C4〜C11 | speckit-coding |
 | 統括 | `novelkit-all` | C2〜C11 | speckit-all |
@@ -80,9 +80,14 @@ claude "/novelkit-bootstrap 滅びた王国の料理人が、敵国の王の舌�
 python3 ~/.myai/scaffold/novelkit/scripts/new_project.py ~/novels/existing --adopt --link
 ```
 
-- 既存のファイルは上書きしない。追加したファイルを確かめてからコミットする。
+- 既存のファイルは上書きしない。`.gitignore` は、足りない行だけを末尾に足す。追加したファイルを確かめてからコミットする。
+- `.claude/skills/` などに同名のスキル（別の版をコピーで入れていたものなど）があれば残し、`CONFLICT` として表示する。novelkit 版に揃えるなら、既存のものを消してから `python3 ~/.myai/scaffold/novelkit/scripts/new_project.py --relink <作品のディレクトリ>` で張り直す。
+- 既存の `CLAUDE.md` などは上書きしないので、表示された行（`@.kiro/steering/novel-writing.md` など）を足す。
 - `.novelkit/config.yaml` の `paths` を既存の配置に合わせる。ファイルは動かさない。合わせた後に `python3 skills/novelkit/novelkit-status/scripts/novelkit.py init` を実行すると、足りないディレクトリだけを作る。
-- `/novelkit-constitution` で既存の決まりと本文から文体の決まりを作り、`/novelkit-canon --adopt <設定のディレクトリ>` で設定資料にフロントマターを足す。
+- `/novelkit-bootstrap --adopt` で、既存の資料から足りない成果物だけを作る（`--auto`・`--oneshot` と組み合わせられる）。
+  - 既存の資料を探し、W1〜W10 ごとに「移し替える / 完了として記録 / 新しく作る / 飛ばす」を `docs/adopt-plan.md` に書いて合意してから進める。
+  - 文体の決まりは既存の決まりと本文から作り（`novelkit-constitution` の取り込み）、設定資料は `novelkit-canon --adopt` でフロントマターを足して正典にする。
+  - 書き終えた章は、章仕様とシーン台帳を本文から逆起こしし、台帳の `出力:` で既存の本文を指す。本文は書き換えない（フロントマターを足すのも作者の承認を得てから）。
 - 既存の本文だけを先に診断するには、次を実行する。
 
   ```bash
@@ -112,7 +117,9 @@ python3 skills/novelkit/novelkit-status/scripts/novelkit.py handover   # 引き�
 │   ├── novelkit-status/scripts/        #   novelkit.py（進捗・文脈パック・引き継ぎ書・検索の予算）、nklib.py（共通ライブラリ）、count_search.py（フック）
 │   ├── novelkit-review/scripts/        #   phrases.py（類似性軸の検索候補）
 │   └── novelkit-check/scripts/         #   check.py（機械検証）
-└── scripts/new_project.py              # 作品のディレクトリを作る・既存作品に取り込む
+└── scripts/
+    ├── new_project.py                  # 作品のディレクトリを作る・既存作品に取り込む（--adopt）・リンクを張り直す（--relink）
+    └── new-novelkit-project            # 作って Claude Code で立ち上げを始める
 ```
 
 ## 作品のディレクトリ構成
@@ -121,6 +128,7 @@ python3 skills/novelkit/novelkit-status/scripts/novelkit.py handover   # 引き�
 .novelkit/config.yaml          # パスの対応、1 話の字数、文章の検査のしきい値、文脈パックの設定
 .novelkit/memory/constitution.md   # 文体の決まり（最上位の規範）
 docs/concept/                  # seed.md、direction.md、premises.md、backlog.md（ネタ帳）
+docs/adopt-plan.md             # 既存の作品への取り込みの計画（novelkit-bootstrap --adopt）
 docs/research/                 # wide.md、deep/、anachronism.md
 docs/plot/                     # synopsis.md、structure.md、promises.md（伏線台帳）、threads.md（筋の台帳）
 canon/                         # 正典（1 項目 1 ファイル。フロントマターに ai / reveal_from / born など）

@@ -3,12 +3,16 @@
 
 使い方:
   python3 new_project.py <作品のディレクトリ> [--title <仮題>] [--link] [--adopt]
+  python3 new_project.py --relink <作品のディレクトリ>   # 各エージェントのスキルディレクトリのリンクだけを作り直す
 
 - 新しいディレクトリなら、scaffold の規則ファイル（CLAUDE.md、AGENTS.md、GEMINI.md、.kiro/steering/）と
   スキル（skills/novelkit/）を置き、各エージェントのスキルディレクトリからリンクし、git init と初回コミットを行う。
 - --adopt: 既存の作品に取り込む。既存のファイルは上書きせず、衝突したものは一覧にするだけにする。
+  .gitignore が既にあれば、足りない行だけを末尾に足す。各エージェントのスキルディレクトリに同名のスキル
+  （ディレクトリや別の場所へのリンク）があれば残し、CONFLICT として挙げる。
   git リポジトリなら初回コミットは作らない（変更は作者が確かめてからコミットする）。
 - --link: スキルをコピーせず、scaffold のスキルへのシンボリックリンクにする（scaffold の更新がすぐ反映される）。
+- --relink: CONFLICT のスキルを消した後などに、足りないリンクだけを張り直す。
 標準ライブラリだけで書く（Python 3.9 以上）。
 """
 
@@ -22,9 +26,94 @@ import sys
 from pathlib import Path
 
 SCAFFOLD = Path(__file__).resolve().parents[1]
-RULE_FILES = ["CLAUDE.md", "AGENTS.md", "GEMINI.md", ".gitignore",
+RULE_FILES = ["CLAUDE.md", "AGENTS.md", "GEMINI.md",
               ".kiro/steering/language.md", ".kiro/steering/novel-writing.md"]
 AGENT_SKILL_DIRS = [".claude/skills", ".agents/skills", ".kiro/skills"]
+STEERING_IMPORTS = ["@.kiro/steering/language.md", "@.kiro/steering/novel-writing.md"]
+GITIGNORE_MARK = "# ===== novelkit の取り込みで追加 ====="
+IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store")
+
+
+def link_agent_dirs(target: Path, conflicts: list[str]) -> int:
+    """各エージェントのスキルディレクトリから skills/novelkit/<skill> へ相対リンクを張る。作った数を返す。
+
+    すでにある同名のディレクトリや、別の場所へのリンクは残し、conflicts に挙げる。
+    リンクを作れない環境（Windows で開発者モードがオフなど）では、実体をコピーする。
+    """
+    skills_dir = target / "skills" / "novelkit"
+    if not skills_dir.is_dir():
+        sys.exit(f"{skills_dir} がありません。novelkit を取り込んだ作品のディレクトリを指定してください。")
+    made = 0
+    for base in AGENT_SKILL_DIRS:
+        d = target / base
+        d.mkdir(parents=True, exist_ok=True)
+        for s in sorted(p.name for p in skills_dir.iterdir() if p.is_dir() and not p.name.startswith("__")):
+            link = d / s
+            want = os.path.relpath(skills_dir / s, d)
+            if link.is_symlink():
+                if os.readlink(link) == want:
+                    continue
+                conflicts.append(f"{base}/{s}（別の場所へのリンク: {os.readlink(link)}）")
+                continue
+            if link.exists():
+                conflicts.append(f"{base}/{s}（既存のディレクトリ）")
+                continue
+            try:
+                link.symlink_to(want, target_is_directory=True)
+            except OSError:
+                shutil.copytree(skills_dir / s, link, ignore=IGNORE)
+                print(f"WARN: {base}/{s} はリンクを作れなかったため、実体をコピーしました。", file=sys.stderr)
+            made += 1
+    return made
+
+
+def merge_gitignore(target: Path, added: list[str], skipped: list[str]) -> None:
+    """.gitignore がなければコピーし、あれば足りない行だけを末尾に足す。"""
+    src, dst = SCAFFOLD / ".gitignore", target / ".gitignore"
+    if not dst.exists():
+        shutil.copy2(src, dst)
+        added.append(".gitignore")
+        return
+    current = set(dst.read_text(encoding="utf-8", errors="replace").splitlines())
+    wanted = [line for line in src.read_text(encoding="utf-8").splitlines()
+              if line.strip() and not line.startswith("#") and line not in current]
+    if not wanted:
+        skipped.append(".gitignore")
+        return
+    text = dst.read_text(encoding="utf-8", errors="replace")
+    if text and not text.endswith("\n"):
+        text += "\n"
+    dst.write_text(text + f"\n{GITIGNORE_MARK}\n" + "\n".join(wanted) + "\n", encoding="utf-8")
+    added.append(f".gitignore（{len(wanted)} 行を追記）")
+
+
+def steering_hints(target: Path) -> list[str]:
+    """既存の CLAUDE.md などが novelkit の steering を読み込んでいなければ、足す行を案内する。"""
+    hints = []
+    for name in ("CLAUDE.md", "GEMINI.md"):
+        p = target / name
+        if p.exists():
+            text = p.read_text(encoding="utf-8", errors="replace")
+            missing = [line for line in STEERING_IMPORTS if line not in text]
+            if missing:
+                hints.append(f"{name} に次の行を足す: " + " / ".join(missing))
+    p = target / "AGENTS.md"
+    if p.exists():
+        text = p.read_text(encoding="utf-8", errors="replace")
+        missing = [rel for rel in RULE_FILES if rel.startswith(".kiro/steering/") and rel not in text]
+        if missing:
+            hints.append("AGENTS.md の読み込みリストに " + "、".join(f"`{m}`" for m in missing) + " を足す")
+    return hints
+
+
+def print_conflicts(conflicts: list[str]) -> None:
+    if not conflicts:
+        return
+    print(f"CONFLICT（同名のスキルが既にあるため残した。{len(conflicts)} 件）:")
+    for c in conflicts[:6]:
+        print(f"  {c}")
+    if len(conflicts) > 6:
+        print(f"  ほか {len(conflicts) - 6} 件")
 
 
 def main() -> None:
@@ -33,13 +122,22 @@ def main() -> None:
     ap.add_argument("--title", default="")
     ap.add_argument("--link", action="store_true", help="スキルを scaffold へのシンボリックリンクにする")
     ap.add_argument("--adopt", action="store_true", help="既存の作品に取り込む（上書きしない）")
+    ap.add_argument("--relink", action="store_true", help="各エージェントのスキルディレクトリのリンクだけを作り直す")
     args = ap.parse_args()
 
     target = Path(args.target).expanduser().resolve()
+    if args.relink:
+        conflicts: list[str] = []
+        made = link_agent_dirs(target, conflicts)
+        print(f"LINKED: {made}")
+        print_conflicts(conflicts)
+        return
     if target.exists() and any(target.iterdir()) and not args.adopt:
         sys.exit(f"{target} は空ではありません。既存の作品に取り込むなら --adopt を付けてください。")
     target.mkdir(parents=True, exist_ok=True)
-    added, skipped = [], []
+    added: list[str] = []
+    skipped: list[str] = []
+    conflicts = []
 
     for rel in RULE_FILES:
         src, dst = SCAFFOLD / rel, target / rel
@@ -49,6 +147,7 @@ def main() -> None:
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dst)
         added.append(rel)
+    merge_gitignore(target, added, skipped)
 
     skills_src = SCAFFOLD / "skills" / "novelkit"
     skills_dst = target / "skills" / "novelkit"
@@ -59,22 +158,11 @@ def main() -> None:
         if args.link:
             skills_dst.symlink_to(skills_src, target_is_directory=True)
         else:
-            shutil.copytree(skills_src, skills_dst, ignore=shutil.ignore_patterns("__pycache__"))
+            shutil.copytree(skills_src, skills_dst, ignore=IGNORE)
         added.append("skills/novelkit/" + ("（リンク）" if args.link else ""))
 
-    for base in AGENT_SKILL_DIRS:
-        d = target / base
-        d.mkdir(parents=True, exist_ok=True)
-        for s in sorted(p.name for p in skills_src.iterdir() if p.is_dir()):
-            link = d / s
-            if link.exists() or link.is_symlink():
-                continue
-            rel = os.path.relpath(skills_dst / s, d)
-            try:
-                link.symlink_to(rel, target_is_directory=True)
-            except OSError:
-                shutil.copytree(skills_src / s, link, ignore=shutil.ignore_patterns("__pycache__"))
-        added.append(base + "/")
+    link_agent_dirs(target, conflicts)
+    added.append("、".join(d + "/" for d in AGENT_SKILL_DIRS) + "（リンク）")
 
     is_repo = (target / ".git").exists()
     if not is_repo:
@@ -99,12 +187,20 @@ def main() -> None:
     print("ADDED: " + ", ".join(added))
     if skipped:
         print("SKIPPED（既存のため変更していない）: " + ", ".join(skipped))
+    print_conflicts(conflicts)
     print("\n次の手順:")
     if args.adopt:
-        print("  1. 追加されたファイルを確かめてコミットする")
-        print("  2. .novelkit/config.yaml の paths を既存の配置に合わせる")
-        print("  3. python3 skills/novelkit/novelkit-status/scripts/novelkit.py init で、足りないディレクトリだけを作る")
-        print("  4. /novelkit-constitution（取り込み）と /novelkit-canon --adopt <設定のディレクトリ> を実行する")
+        step = 1
+        print(f"  {step}. 追加されたファイルを確かめてコミットする"); step += 1
+        for hint in steering_hints(target):
+            print(f"  {step}. {hint}"); step += 1
+        if conflicts:
+            print(f"  {step}. CONFLICT のスキルは既存のものを残した。novelkit 版に揃えるなら、既存のものを消してから "
+                  f"`python3 {Path(__file__).resolve()} --relink {target}` を実行する"); step += 1
+        print(f"  {step}. .novelkit/config.yaml の paths を既存の配置に合わせる（ファイルは動かさない）"); step += 1
+        print(f"  {step}. python3 skills/novelkit/novelkit-status/scripts/novelkit.py init で、足りないディレクトリだけを作る"); step += 1
+        print(f"  {step}. /novelkit-bootstrap --adopt で、既存のプロット・設定・本文から足りない成果物だけを作る"
+              "（文体の決まりと正典の取り込みも、この中で行う）")
     else:
         print(f"  cd {target} && claude \"/novelkit-bootstrap <1 文のコンセプト>\"")
 

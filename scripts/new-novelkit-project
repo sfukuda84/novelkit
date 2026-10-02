@@ -8,7 +8,8 @@
 - 作品のディレクトリは、同じ scripts/ にある new_project.py で作る（規則ファイル、スキル、git init、フック）。
 - -m を付けると、作ったディレクトリで claude を対話モードで起動し、"/novelkit-bootstrap [--auto|--oneshot] <コンセプト>" を渡す。
 - -m を省くと、対話でコンセプトを聞く。空のまま Enter を押すか --no-launch を付けると、起動せずに次の手順だけを表示する。
-- --adopt（既存の作品への取り込み）のときは起動しない。取り込みの手順は new_project.py が表示する。
+- --adopt（既存の作品への取り込み）のときは起動しない。paths を既存の配置に合わせてから `/novelkit-bootstrap --adopt` を
+  実行する。取り込みの手順（同名のスキルの CONFLICT、steering の読み込みに足す行を含む）は new_project.py が表示する。
 
 ~/.local/bin などから、このファイルへのシンボリックリンクで呼ぶ（実体の場所から new_project.py を探す）。
 標準ライブラリだけで書く（Python 3.9 以上）。
@@ -37,7 +38,7 @@ def main() -> int:
     mode.add_argument("--auto", action="store_true", help="質問せず推奨案を採用して進める（novelkit-bootstrap --auto）")
     mode.add_argument("--oneshot", action="store_true", help="最初に一度だけまとめて質問し、以降は自動で進める")
     ap.add_argument("--link", action="store_true", help="スキルをコピーせず、scaffold へのシンボリックリンクにする")
-    ap.add_argument("--adopt", action="store_true", help="既存の作品に取り込む（上書きしない。エージェントは起動しない）")
+    ap.add_argument("--adopt", action="store_true", help="既存の作品に取り込む（上書きしない。エージェントは起動しない。続きは /novelkit-bootstrap --adopt）")
     ap.add_argument("--no-launch", action="store_true", help="エージェントを起動せず、次の手順だけを表示する")
     args = ap.parse_args()
 
