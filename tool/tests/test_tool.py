@@ -37,6 +37,14 @@ def call(*argv: str, scaffold_dir: Path | None = None) -> tuple[int, str]:
     return code, out.getvalue()
 
 
+def run_cli(*argv: str) -> tuple[int, str]:
+    """子プロセス（new_project.py）の出力も含めて捕まえるため、コマンドを別のプロセスで実行する。"""
+    env = {**os.environ, "PYTHONPATH": str(SCAFFOLD / "tool" / "src")}
+    proc = subprocess.run([sys.executable, "-m", "new_novelkit_project", *argv], capture_output=True, text=True,
+                          encoding="utf-8", errors="replace", env=env)
+    return proc.returncode, proc.stdout + proc.stderr
+
+
 class ToolTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -156,7 +164,7 @@ class ToolTest(unittest.TestCase):
         git("init", "-q", "-b", "main", cwd=target)
         git("add", "-A", cwd=target)
         git("commit", "-qm", "init", cwd=target)
-        code, out = call(str(target), "--adopt", "--repo", self.url)
+        code, out = run_cli(str(target), "--adopt", "--repo", self.url)
         self.assertEqual(code, 0, out)
         self.assertIn(f'{cli.PROG} "{target}" --adopt', out)
         self.assertNotIn("novelkit-scaffold-", out)  # 消える一時的な scaffold のパスを案内しない
