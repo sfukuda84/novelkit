@@ -8,7 +8,7 @@
 - 新しいディレクトリなら、scaffold の規則ファイル（CLAUDE.md、AGENTS.md、GEMINI.md、.kiro/steering/）と
   スキル（skills/novelkit/）を置き、各エージェントのスキルディレクトリからリンクし、git init と初回コミットを行う。
 - --adopt: 既存の作品に取り込む。既存のファイルは上書きせず、衝突したものは一覧にするだけにする。
-  .gitignore が既にあれば、足りない行だけを末尾に足す。各エージェントのスキルディレクトリに同名のスキル
+  .gitignore が既にあれば、novelkit が動くのに要る行（scripts/gitignore-required.txt）のうち足りないものだけを末尾に足す。各エージェントのスキルディレクトリに同名のスキル
   （ディレクトリや別の場所へのリンク）があれば残し、CONFLICT として挙げる。
   git リポジトリなら初回コミットは作らない（変更は作者が確かめてからコミットする）。
 - --link: スキルをコピーせず、scaffold のスキルへのシンボリックリンクにする（scaffold の更新がすぐ反映される）。
@@ -67,16 +67,27 @@ def link_agent_dirs(target: Path, conflicts: list[str]) -> int:
     return made
 
 
+def required_gitignore_lines(scaffold: Path) -> list[str]:
+    """novelkit が動くのに要る .gitignore の行（scripts/gitignore-required.txt）。"""
+    path = scaffold / "scripts" / "gitignore-required.txt"
+    if not path.is_file():
+        return []
+    return [line.strip() for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.lstrip().startswith("#")]
+
+
 def merge_gitignore(target: Path, added: list[str], skipped: list[str]) -> None:
-    """.gitignore がなければコピーし、あれば足りない行だけを末尾に足す。"""
+    """.gitignore がなければ scaffold のものをコピーする。あれば、novelkit が動くのに要る行のうち足りないものだけを足す。
+
+    scaffold の .gitignore のほかの行（OS、エディタ、言語ごとの生成物など）は、既存のプロジェクトの事情に任せて足さない。
+    """
     src, dst = SCAFFOLD / ".gitignore", target / ".gitignore"
     if not dst.exists():
         shutil.copy2(src, dst)
         added.append(".gitignore")
         return
-    current = set(dst.read_text(encoding="utf-8", errors="replace").splitlines())
-    wanted = [line for line in src.read_text(encoding="utf-8").splitlines()
-              if line.strip() and not line.startswith("#") and line not in current]
+    current = {line.strip() for line in dst.read_text(encoding="utf-8", errors="replace").splitlines()}
+    wanted = [line for line in required_gitignore_lines(SCAFFOLD) if line not in current]
     if not wanted:
         skipped.append(".gitignore")
         return
