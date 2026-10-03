@@ -145,10 +145,15 @@ def build_plan(project: Path, scaffold: Path) -> tuple[Plan, dict[str, tuple[str
 
     current = set((project / ".gitignore").read_text(encoding="utf-8").splitlines()) \
         if (project / ".gitignore").is_file() else set()
-    wanted = (scaffold / ".gitignore").read_text(encoding="utf-8").splitlines() \
-        if (scaffold / ".gitignore").is_file() else []
-    wanted.append(f"{NEW_VERSIONS_DIR}/")
-    plan.gitignore_lines = [line for line in wanted if line.strip() and not line.startswith("#") and line not in current]
+    # 足すのは、このキットが動くのに要る行（scaffold の scripts/gitignore-required.txt）だけにする。
+    # scaffold の .gitignore のほかの行（OS、エディタ、言語ごとの生成物など）は、プロジェクトの事情に任せる。
+    required = scaffold / "scripts" / "gitignore-required.txt"
+    wanted = [line.strip() for line in required.read_text(encoding="utf-8").splitlines()
+              if line.strip() and not line.lstrip().startswith("#")] if required.is_file() else []
+    if f"{NEW_VERSIONS_DIR}/" not in wanted:
+        wanted.append(f"{NEW_VERSIONS_DIR}/")
+    current = {line.strip() for line in current}
+    plan.gitignore_lines = [line for line in wanted if line not in current]
     return plan, new
 
 

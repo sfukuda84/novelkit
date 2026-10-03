@@ -39,6 +39,7 @@ scaffold の持ち物（スキル、ルールなど）だけを取り込み、1 
 - scaffold の全履歴のどれかの版と一致するファイルは、新しい版で上書きする。scaffold から消えたファイルは削除する。
 - どの版とも一致しないファイルは手で直したものとみなして上書きせず、新しい版を `.scaffold-new/` に置く。比べるときは `git diff --no-index <ファイル> .scaffold-new/<ファイル>`。
 - 取り込み（`--adopt`）で残した同名のスキルや、追跡していない既存のファイルには触らない。
+- `.gitignore` には、novelkit が動くのに要る行（scaffold の `scripts/gitignore-required.txt`）のうち、足りないものだけを足す。取り込み（`--adopt`）も同じ。scaffold の `.gitignore` のほかの行（OS、エディタ、言語ごとの生成物など）は足さない。
 - スキルを scaffold へのリンクで置いた作品は、スキルを更新しない（すでに最新）。
 - 作品の成果物（設定、本文、docs/ など）は対象外。
 

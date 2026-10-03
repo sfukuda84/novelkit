@@ -174,6 +174,27 @@ class ToolTest(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertTrue(own.is_symlink())
 
+    def test_adopt_and_update_add_only_required_gitignore_lines(self) -> None:
+        target = self.work("p")
+        target.mkdir(parents=True)
+        git("init", "-q", "-b", "main", cwd=target)
+        (target / ".gitignore").write_text("# 既存のプロジェクト\nmy-build/\n", encoding="utf-8")
+        git("add", "-A", cwd=target)
+        git("commit", "-qm", "init", cwd=target)
+        code, out = call(str(target), "--adopt", "--repo", self.url)
+        self.assertEqual(code, 0, out)
+        lines = (target / ".gitignore").read_text(encoding="utf-8").splitlines()
+        self.assertIn("my-build/", lines)
+        self.assertIn(".scaffold-new/", lines)
+        self.assertIn(".claude/settings.local.json", lines)
+        self.assertNotIn(".DS_Store", lines)  # scaffold の .gitignore のほかの行は足さない
+        git("add", "-A", cwd=target)
+        git("commit", "-qm", "adopt", cwd=target)
+        code, out = call("update", str(target), "--repo", self.url)
+        self.assertEqual(code, 0, out)
+        self.assertNotIn(".gitignore に足す行", out)
+        self.assertNotIn(".DS_Store", (target / ".gitignore").read_text(encoding="utf-8").splitlines())
+
     def test_update_stops_on_dirty_tree(self) -> None:
         target = self.work("p")
         self.assertEqual(call(str(target), "--repo", self.url, "--no-launch")[0], 0)

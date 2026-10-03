@@ -1,0 +1,13 @@
+# novelkit が動くのに要る .gitignore の行（既存の作品への取り込み --adopt と update は、足りない行だけを足す）
+# scaffold の .gitignore のほかの行（OS の生成物など）は、作品の事情に任せて足さない。
+# 行を足したら、scaffold の .gitignore にも同じ行があることを確かめる。
+
+# novelkit の生成物（文脈パック）
+chapters/*/context/
+# update が、手で直したファイルの新しい版を置く場所
+.scaffold-new/
+# AI エージェントの個人設定・ローカル状態
+.claude/settings.local.json
+CLAUDE.local.md
+# スキルのスクリプト（Python）のキャッシュ
+__pycache__/
